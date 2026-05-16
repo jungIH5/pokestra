@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# 시스템 의존성
+# - fluidsynth: MIDI → WAV 변환
+# - fluid-soundfont-gm: General MIDI 사운드폰트
+# - musescore3: MusicXML → PNG 렌더링
+# - xvfb: MuseScore3 헤드리스 실행용 가상 디스플레이
+# - ffmpeg: WAV → MP3 변환
+# - lame: MP3 인코더 (ffmpeg 대체)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fluidsynth \
+    fluid-soundfont-gm \
+    musescore3 \
+    xvfb \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt requirements-worker.txt ./
+RUN pip install --no-cache-dir -r requirements-worker.txt
+
+COPY . .
+
+CMD ["celery", "-A", "worker.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
