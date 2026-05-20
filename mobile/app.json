@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Photo Maestro",
+    "slug": "photo-maestro",
+    "version": "1.0.0",
+    "scheme": "photo-maestro",
+    "platforms": ["ios", "android"],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Photo Maestro가 음악을 생성하기 위해 카메라를 사용합니다."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Photo Maestro가 음악을 생성하기 위해 사진 라이브러리에 접근합니다."
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.photomaestro.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6200ee"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.photomaestro.app",
+      "supportsTablet": false
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

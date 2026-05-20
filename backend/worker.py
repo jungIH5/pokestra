@@ -59,9 +59,14 @@ def run_analysis_task(self, job_id: str, image_b64: str) -> None:
             "error": None,
         }
 
-        final_state = None
+        # initial_state를 기반으로 누적하여 전체 최종 상태를 유지한다.
+        # graph.stream() 기본 모드("updates")는 노드별 partial delta만 반환하므로
+        # 단순히 final_state = node_output으로 덮어쓰면 이전 노드의 값이 사라진다.
+        final_state: dict = dict(initial_state)
+        graph_ran = False
         for event in graph.stream(initial_state):
             for node_name, node_output in event.items():
+                final_state.update(node_output)
                 progress = PROGRESS_MAP.get(node_name, 50)
                 step = node_output.get("current_step", node_name)
                 _set_status(job_id, {
@@ -69,9 +74,9 @@ def run_analysis_task(self, job_id: str, image_b64: str) -> None:
                     "current_step": step,
                     "progress": progress,
                 })
-                final_state = node_output
+                graph_ran = True
 
-        if final_state is None:
+        if not graph_ran:
             raise RuntimeError("그래프가 결과를 반환하지 않았습니다.")
 
         result = {

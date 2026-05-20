@@ -9,9 +9,7 @@ def preprocess_node(state: GraphState) -> dict:
     """이미지를 최대 1920x1920으로 리사이즈하고 JPEG로 정규화한다."""
     img = Image.open(io.BytesIO(state["image_bytes"]))
 
-    if img.mode not in ("RGB", "L"):
-        img = img.convert("RGB")
-    elif img.mode == "L":
+    if img.mode != "RGB":
         img = img.convert("RGB")
 
     img.thumbnail(MAX_SIZE, Image.LANCZOS)
