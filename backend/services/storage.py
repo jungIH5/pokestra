@@ -1,30 +1,17 @@
 import os
-from supabase import create_client, Client
+from pathlib import Path
 
-_client: Client | None = None
-
-
-def _get_client() -> Client:
-    global _client
-    if _client is None:
-        url = os.environ["SUPABASE_URL"]
-        key = os.environ["SUPABASE_SERVICE_KEY"]
-        _client = create_client(url, key)
-    return _client
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", "/app/media"))
 
 
-def upload(path: str, data: bytes, content_type: str) -> str:
-    """파일을 Supabase Storage에 업로드하고 공개 URL을 반환한다."""
-    bucket = os.environ["SUPABASE_BUCKET"]
-    client = _get_client()
-    client.storage.from_(bucket).upload(
-        path=path,
-        file=data,
-        file_options={"content-type": content_type, "upsert": "true"},
-    )
-    return public_url(path)
+def upload(path: str, data: bytes, _content_type: str = "") -> str:
+    dest = MEDIA_ROOT / path
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(data)
+    base_url = os.environ.get("API_BASE_URL", "http://localhost:8000")
+    return f"{base_url}/media/{path}"
 
 
 def public_url(path: str) -> str:
-    bucket = os.environ["SUPABASE_BUCKET"]
-    return _get_client().storage.from_(bucket).get_public_url(path)
+    base_url = os.environ.get("API_BASE_URL", "http://localhost:8000")
+    return f"{base_url}/media/{path}"

@@ -10,6 +10,10 @@ anthropic==0.40.0
 music21==9.3.0
 Pillow==10.4.0
 
+# 이미지 구조 분석
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+
 # OMR (악보 인식) — PyTorch 포함
 oemer==1.3.0
 

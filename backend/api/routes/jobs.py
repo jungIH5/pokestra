@@ -12,7 +12,7 @@ _redis: redis_lib.Redis | None = None
 def _redis_client() -> redis_lib.Redis:
     global _redis
     if _redis is None:
-        _redis = redis_lib.from_url(os.environ["REDIS_URL"])
+        _redis = redis_lib.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
     return _redis
 
 

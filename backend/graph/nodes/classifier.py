@@ -14,7 +14,10 @@ JSON만 반환해줘: {"type": "sheet_music"} 또는 {"type": "general"}"""
 def _client_instance() -> Anthropic:
     global _client
     if _client is None:
-        _client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        key = os.getenv("ANTHROPIC_API_KEY")
+        if not key:
+            raise EnvironmentError("ANTHROPIC_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+        _client = Anthropic(api_key=key)
     return _client
 
 
@@ -22,7 +25,7 @@ def classify_node(state: GraphState) -> dict:
     """Claude Vision으로 악보 사진 여부를 판별한다."""
     b64 = base64.standard_b64encode(state["image_bytes"]).decode()
     msg = _client_instance().messages.create(
-        model="claude-opus-4-7",
+        model="claude-opus-4-8",
         max_tokens=32,
         messages=[{
             "role": "user",

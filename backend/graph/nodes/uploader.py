@@ -4,7 +4,7 @@ from services import storage
 
 
 def upload_files_node(state: GraphState) -> dict:
-    """생성된 파일을 Supabase Storage에 업로드하고 공개 URL을 반환한다."""
+    """생성된 파일을 저장소에 업로드하고 공개 URL을 반환한다."""
     job_id = state["job_id"]
     updates: dict = {"current_step": "파일 업로드 완료"}
 

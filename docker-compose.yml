@@ -8,9 +8,22 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+      - media_data:/app/media
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      MYSQL_URL: ${MYSQL_URL:-mysql+pymysql://maestro:maestropass@mysql:3306/photomaestro}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/app/media}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
     restart: unless-stopped
 
   worker:
@@ -20,9 +33,22 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
     volumes:
       - ./backend:/app
-    env_file: ./backend/.env
+      - media_data:/app/media
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      MYSQL_URL: ${MYSQL_URL:-mysql+pymysql://maestro:maestropass@mysql:3306/photomaestro}
+      MEDIA_ROOT: ${MEDIA_ROOT:-/app/media}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000}
     restart: unless-stopped
 
   redis:
@@ -38,6 +64,25 @@ services:
       retries: 5
     restart: unless-stopped
 
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: photomaestro
+      MYSQL_USER: maestro
+      MYSQL_PASSWORD: maestropass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "maestro", "-pmaestropass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    restart: unless-stopped
+
   flower:
     image: mher/flower:2.0
     command: celery --broker=redis://redis:6379/0 flower --port=5555
@@ -51,3 +96,5 @@ services:
 
 volumes:
   redis_data:
+  mysql_data:
+  media_data:

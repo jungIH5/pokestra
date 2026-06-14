@@ -1,6 +1,9 @@
 import base64
 import json
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 import redis as redis_lib
 from celery_app import celery_app
 from graph.workflow import graph
@@ -8,13 +11,12 @@ from graph.state import GraphState
 
 _redis: redis_lib.Redis | None = None
 
-# 노드 이름 → 진행률 매핑
 PROGRESS_MAP = {
     "preprocess": 5,
     "classify": 15,
-    "analyze": 35,
-    "validate": 45,
-    "map_params": 55,
+    "structural_extract": 30,
+    "mood_parse": 45,
+    "map_params": 50,
     "omr": 50,
     "generate_score": 65,
     "render_score": 75,
@@ -26,7 +28,7 @@ PROGRESS_MAP = {
 def _redis_client() -> redis_lib.Redis:
     global _redis
     if _redis is None:
-        _redis = redis_lib.from_url(os.environ["REDIS_URL"])
+        _redis = redis_lib.from_url(os.getenv("REDIS_URL", "redis://redis:6379/0"))
     return _redis
 
 
@@ -35,7 +37,7 @@ def _set_status(job_id: str, payload: dict, ttl: int = 3600) -> None:
 
 
 @celery_app.task(bind=True, name="worker.run_analysis_task")
-def run_analysis_task(self, job_id: str, image_b64: str) -> None:
+def run_analysis_task(self, job_id: str, image_b64: str, mood_input: str = "") -> None:
     """LangGraph 파이프라인을 실행하고 각 노드 완료 시 Redis에 상태를 업데이트한다."""
     _set_status(job_id, {"status": "running", "current_step": "시작", "progress": 0})
 
@@ -44,9 +46,9 @@ def run_analysis_task(self, job_id: str, image_b64: str) -> None:
         initial_state: GraphState = {
             "job_id": job_id,
             "image_bytes": image_bytes,
+            "mood_input": mood_input,
             "image_type": None,
-            "raw_analysis": None,
-            "analysis_attempts": 0,
+            "structural_data": None,
             "music_params": None,
             "omr_musicxml": None,
             "final_musicxml": None,
@@ -59,9 +61,6 @@ def run_analysis_task(self, job_id: str, image_b64: str) -> None:
             "error": None,
         }
 
-        # initial_state를 기반으로 누적하여 전체 최종 상태를 유지한다.
-        # graph.stream() 기본 모드("updates")는 노드별 partial delta만 반환하므로
-        # 단순히 final_state = node_output으로 덮어쓰면 이전 노드의 값이 사라진다.
         final_state: dict = dict(initial_state)
         graph_ran = False
         for event in graph.stream(initial_state):
@@ -92,7 +91,17 @@ def run_analysis_task(self, job_id: str, image_b64: str) -> None:
             "progress": 100,
             "result": result,
             "error": None,
-        }, ttl=86400)  # 완료된 잡은 24시간 보관
+        }, ttl=86400)
+
+        from services.database import upsert_job
+        upsert_job(
+            job_id=job_id,
+            status="done",
+            score_url=result.get("score_url"),
+            audio_url=result.get("audio_url"),
+            image_type=result.get("image_type"),
+            music_params=result.get("music_params"),
+        )
 
     except Exception as exc:
         _set_status(job_id, {
@@ -101,4 +110,6 @@ def run_analysis_task(self, job_id: str, image_b64: str) -> None:
             "progress": 0,
             "error": str(exc),
         })
+        from services.database import upsert_job
+        upsert_job(job_id=job_id, status="failed", error=str(exc))
         raise
